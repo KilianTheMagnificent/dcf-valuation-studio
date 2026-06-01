@@ -1,0 +1,18 @@
+# Python
+backend/venv/
+__pycache__/
+*.pyc
+
+# Node / frontend
+frontend/node_modules/
+frontend/dist/
+npm-debug.log*
+
+# PyInstaller / desktop build
+/build/
+/dist/
+build_assets/icon.iconset/
+
+# OS / editor
+.DS_Store
+*.swp

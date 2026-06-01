@@ -1,0 +1,6 @@
+# Extra dependencies needed only to BUILD the standalone macOS .app
+# (the runtime deps are in requirements.txt). Install with:
+#   pip install -r backend/requirements-desktop.txt
+pywebview
+pyinstaller
+Pillow
