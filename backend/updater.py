@@ -20,7 +20,6 @@ import tempfile
 import threading
 import time
 import urllib.request
-import zipfile
 from pathlib import Path
 from typing import Optional
 
@@ -121,7 +120,9 @@ sleep 1
 rm -rf "$OLD"
 /usr/bin/ditto "$NEW" "$OLD" || { /usr/bin/open "$OLD" 2>/dev/null; exit 1; }
 /usr/bin/xattr -dr com.apple.quarantine "$OLD" 2>/dev/null
-/usr/bin/open "$OLD"
+# Relaunch — retry a few times, launchd can be briefly flaky right after the
+# previous instance quits.
+for _ in 1 2 3 4 5; do /usr/bin/open "$OLD" && break; sleep 2; done
 rm -rf "$TMP"
 """
 
@@ -155,8 +156,12 @@ def apply_update() -> dict:
 
         extract = tmp / "extract"
         extract.mkdir()
-        with zipfile.ZipFile(zip_path) as z:
-            z.extractall(extract)
+        # Extract with ditto, NOT Python's zipfile: ditto preserves the framework
+        # symlinks inside the .app (e.g. Python3.framework/Versions/Current). zipfile
+        # turns those symlinks into plain files, which breaks the bundle's code
+        # signature and macOS then refuses to launch it ("Launchd job spawn failed").
+        subprocess.run(["/usr/bin/ditto", "-x", "-k", str(zip_path), str(extract)],
+                       check=True)
 
         new_app = next((p for p in extract.rglob("*.app")), None)
         if new_app is None:
