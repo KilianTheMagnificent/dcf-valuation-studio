@@ -8,6 +8,6 @@ Leave it empty to disable update checks (the app just won't look for updates).
 import os
 
 # release.sh rewrites the line below with your repo slug, e.g. "yourname/dcf-valuation-studio".
-_BAKED_REPO = ""
+_BAKED_REPO = "KilianTheMagnificent/dcf-valuation-studio"
 
 GITHUB_REPO = (os.environ.get("DCF_UPDATE_REPO", "").strip() or _BAKED_REPO).strip()
