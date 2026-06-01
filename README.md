@@ -25,10 +25,18 @@ Node installed to run**. Then:
 
 It opens a native macOS window (Apple's built-in WebKit) and runs its data server
 privately inside the app. *Building* the bundle still needs Python 3.9+ and Node 18+
-(one-time). The app is **ad-hoc signed**, so the Mac that built it runs it directly; if
-you copy it to **another** Mac, Gatekeeper blocks it the first time — right-click →
-**Open** → **Open**, or run
-`xattr -dr com.apple.quarantine "DCF Valuation Studio.app"`.
+(one-time). The app is **ad-hoc signed (not Apple-notarized)**, so macOS quarantines any
+copy you **download** (e.g. the release zip) and warns once on first launch — *"cannot be
+opened… unidentified developer / can't check it for malware."* To open it: move it into
+`/Applications`, then either right-click → **Open** → **Open**, or run:
+
+```bash
+xattr -dr com.apple.quarantine "/Applications/DCF Valuation Studio.app"
+```
+
+A copy built locally (straight from `dist/`) isn't quarantined and just runs. Either way,
+**in-app auto-updates apply silently** — that first launch is the only time you'd see the
+prompt. (Eliminating it entirely requires an Apple Developer ID + notarization, $99/yr.)
 
 ---
 

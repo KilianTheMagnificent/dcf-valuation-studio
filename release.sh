@@ -45,11 +45,25 @@ git commit -m "Release v$NEW_VERSION" >/dev/null 2>&1 || true
 git tag -f "v$NEW_VERSION"
 
 # 5) Publish to GitHub Releases.
+NOTES="DCF Valuation Studio v$NEW_VERSION
+
+**First launch of a downloaded copy** — the app isn't notarized by Apple, so macOS
+warns once that it can't verify the developer. To open it:
+
+1. Unzip and move \`DCF Valuation Studio.app\` into \`/Applications\`.
+2. Clear the download flag (one time):
+   \`\`\`
+   xattr -dr com.apple.quarantine \"/Applications/DCF Valuation Studio.app\"
+   \`\`\`
+   …or just right-click the app → **Open** → **Open**.
+
+Once installed, in-app **auto-updates apply silently** (no warning)."
+
 if command -v gh >/dev/null 2>&1; then
   git push origin HEAD
   git push -f origin "v$NEW_VERSION"
   gh release create "v$NEW_VERSION" "$ZIP" --title "v$NEW_VERSION" \
-      --notes "DCF Valuation Studio v$NEW_VERSION" \
+      --notes "$NOTES" \
     || gh release upload "v$NEW_VERSION" "$ZIP" --clobber
   echo ""
   echo "✓ Published v$NEW_VERSION — installed apps will now offer this update."
