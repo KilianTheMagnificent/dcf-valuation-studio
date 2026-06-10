@@ -32,12 +32,17 @@ sed -i '' -E "s|^_BAKED_REPO = .*|_BAKED_REPO = \"$REPO_SLUG\"|" backend/update_
 # 2) Build the self-contained app (frontend + PyInstaller + sign).
 ./build_app.sh
 
-# 3) Zip the .app (ditto preserves the bundle structure + symlinks).
+# 3) Gate on a verified signature, then zip (ditto preserves symlinks).
 APP="dist/DCF Valuation Studio.app"
+if ! codesign --verify "$APP" 2>/dev/null; then
+  echo "✗ '$APP' does not pass codesign --verify — refusing to publish a broken bundle."
+  echo "  (build_app.sh stage-signs in a temp dir; re-run ./build_app.sh and check its output.)"
+  exit 1
+fi
 ZIP="dist/DCF-Valuation-Studio-$NEW_VERSION.zip"
 rm -f "$ZIP"
 /usr/bin/ditto -c -k --keepParent "$APP" "$ZIP"
-echo "→ Packaged: $ZIP"
+echo "→ Packaged: $ZIP (signature verified)"
 
 # 4) Commit + tag.
 git add -A

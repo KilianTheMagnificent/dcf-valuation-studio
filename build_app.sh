@@ -31,23 +31,34 @@ iconutil -c icns build_assets/icon.iconset -o build_assets/icon.icns
 echo "→ Packaging the .app with PyInstaller (this takes a few minutes)..."
 "$VENV/bin/pyinstaller" --noconfirm --clean dcf.spec
 
-# Clear filesystem detritus, then ad-hoc sign. macOS Sequoia keeps re-adding a
-# system `com.apple.provenance` xattr to the bundled .so files, which can make
-# codesign report "resource fork ... not allowed" — so retry a few times. The app
-# runs on PyInstaller's own ad-hoc signature regardless, so this never aborts the
-# build (important: release.sh relies on build_app.sh succeeding).
-echo "→ Clearing detritus + ad-hoc signing (required on Apple Silicon)..."
-_sign() {
-  find "$APP" -name '.DS_Store' -delete 2>/dev/null || true
-  dot_clean -m "$APP" 2>/dev/null || true
-  xattr -cr "$APP" 2>/dev/null || true
-  codesign --force --deep --sign - "$APP" 2>/dev/null
-}
-if _sign || { sleep 2; _sign; } || { sleep 3; _sign; }; then
-  echo "  ✓ ad-hoc signed"
+# Ad-hoc sign (required on Apple Silicon). Signing IN PLACE under ~/Desktop is
+# unreliable: iCloud/file-provider sync keeps re-adding xattrs ("resource fork
+# ... detritus not allowed") in a race with codesign. So stage the bundle in a
+# temp dir outside any synced folder, clean + sign + VERIFY there, then move the
+# signed copy back over dist/.
+echo "→ Ad-hoc signing in a temp stage (avoids iCloud xattr races)..."
+STAGE="$(mktemp -d)"
+ditto "$APP" "$STAGE/app.app"
+SIGNED=""
+for _try in 1 2 3 4 5; do
+  find "$STAGE/app.app" -name '.DS_Store' -delete 2>/dev/null || true
+  dot_clean -m "$STAGE/app.app" 2>/dev/null || true
+  xattr -cr "$STAGE/app.app" 2>/dev/null || true
+  if codesign --force --deep --sign - "$STAGE/app.app" 2>/dev/null \
+      && codesign --verify "$STAGE/app.app" 2>/dev/null; then
+    SIGNED=yes
+    break
+  fi
+  sleep 1
+done
+if [ -n "$SIGNED" ]; then
+  rm -rf "$APP"
+  ditto "$STAGE/app.app" "$APP"
+  echo "  ✓ ad-hoc signed + verified"
 else
-  echo "  ⚠ couldn't fully re-sign (harmless system xattr) — the app still launches."
+  echo "  ⚠ couldn't get a verified signature — the app still launches on PyInstaller's own."
 fi
+rm -rf "$STAGE"
 
 echo ""
 echo "✓ Built: $APP"
