@@ -220,6 +220,57 @@ function selectTerminal(method: TerminalMethod, gordon: number, exit: number): n
 }
 
 // ---------------------------------------------------------------------------
+// Reverse DCF: solve for the single input that makes fair value == market
+// price, holding everything else at the user's assumptions. Bisection works
+// because fair value is monotonic in each of these inputs.
+// ---------------------------------------------------------------------------
+function bisect(f: (x: number) => number, lo: number, hi: number): number | null {
+  let flo = f(lo)
+  let fhi = f(hi)
+  if (!Number.isFinite(flo) || !Number.isFinite(fhi) || flo * fhi > 0) return null
+  for (let i = 0; i < 64; i++) {
+    const mid = (lo + hi) / 2
+    const fm = f(mid)
+    if (!Number.isFinite(fm)) return null
+    if (flo * fm <= 0) {
+      hi = mid
+      fhi = fm
+    } else {
+      lo = mid
+      flo = fm
+    }
+  }
+  return (lo + hi) / 2
+}
+
+/** Flat annual revenue growth (all projection years) implied by the market price. */
+export function impliedUniformGrowth(
+  a: Assumptions,
+  startFiscalYear: number,
+  price: number | null,
+): number | null {
+  if (!price || price <= 0 || a.sharesOutstanding <= 0) return null
+  const f = (g: number) => {
+    const mod: Assumptions = { ...a, growthRates: a.growthRates.map(() => g) }
+    return runDcf(mod, startFiscalYear, price).fairValuePerShare - price
+  }
+  return bisect(f, -0.6, 1.5)
+}
+
+/** Discount rate (WACC) implied by the market price under the user's assumptions. */
+export function impliedWacc(
+  a: Assumptions,
+  startFiscalYear: number,
+  price: number | null,
+): number | null {
+  if (!price || price <= 0 || a.sharesOutstanding <= 0) return null
+  // Keep the lower bound above terminal growth so Gordon TV stays defined.
+  const lo = Math.max(a.terminalGrowth + 0.0025, 0.005)
+  const f = (w: number) => runDcf(a, startFiscalYear, price, { waccOverride: w }).fairValuePerShare - price
+  return bisect(f, lo, 0.6)
+}
+
+// ---------------------------------------------------------------------------
 // Build the initial editable assumptions from the fetched company data.
 // ---------------------------------------------------------------------------
 export function buildDefaultAssumptions(data: CompanyData): Assumptions {

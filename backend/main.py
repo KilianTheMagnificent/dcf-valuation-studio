@@ -18,7 +18,7 @@ import logging
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
-from data_provider import get_company_dcf_data
+from data_provider import get_company_dcf_data, search_tickers
 from updater import apply_update, check_for_update
 from version import __version__
 
@@ -57,6 +57,12 @@ def company(ticker: str) -> dict:
             status_code=502,
             detail=f"Failed to fetch data from Yahoo Finance: {exc}",
         )
+
+
+@app.get("/api/search")
+def search(q: str = "") -> dict:
+    """Ticker / company-name autocomplete (equities only)."""
+    return {"results": search_tickers(q)}
 
 
 @app.get("/api/version")

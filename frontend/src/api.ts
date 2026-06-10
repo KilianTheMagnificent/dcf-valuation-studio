@@ -15,6 +15,20 @@ export async function fetchCompany(ticker: string): Promise<CompanyData> {
   return res.json()
 }
 
+// ---- Ticker / company-name search -------------------------------------------
+export interface SearchResult {
+  symbol: string
+  name: string
+  exchange: string
+}
+
+export async function searchTickers(q: string): Promise<SearchResult[]> {
+  const res = await fetch(`/api/search?q=${encodeURIComponent(q)}`)
+  if (!res.ok) return []
+  const body = await res.json().catch(() => ({ results: [] }))
+  return body?.results ?? []
+}
+
 // ---- Auto-update -----------------------------------------------------------
 export interface UpdateInfo {
   currentVersion: string

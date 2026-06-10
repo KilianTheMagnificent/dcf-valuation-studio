@@ -213,6 +213,36 @@ def _fetch_analyst(tk, info: dict) -> dict:
 
 
 # --------------------------------------------------------------------------- #
+# Ticker / company-name search (for the frontend autocomplete)
+# --------------------------------------------------------------------------- #
+def search_tickers(query: str, limit: int = 8) -> list[dict]:
+    """Search Yahoo for equities matching a ticker or company name."""
+    query = (query or "").strip()
+    if len(query) < 1:
+        return []
+    try:
+        res = yf.Search(query, max_results=max(limit * 2, 10))
+        quotes = res.quotes or []
+    except Exception:  # noqa: BLE001
+        return []
+    out: list[dict] = []
+    seen: set[str] = set()
+    for q in quotes:
+        sym = (q.get("symbol") or "").strip()
+        if not sym or sym in seen or q.get("quoteType") != "EQUITY":
+            continue
+        seen.add(sym)
+        out.append({
+            "symbol": sym,
+            "name": q.get("shortname") or q.get("longname") or sym,
+            "exchange": q.get("exchDisp") or q.get("exchange") or "",
+        })
+        if len(out) >= limit:
+            break
+    return out
+
+
+# --------------------------------------------------------------------------- #
 # Main entry point
 # --------------------------------------------------------------------------- #
 def get_company_dcf_data(ticker: str) -> dict:
